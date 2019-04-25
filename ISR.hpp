@@ -34,10 +34,10 @@ public:
     Isr* docEnd;
     
     //Find next instance of a term
-    virtual Location nextInstance();
+    virtual Location nextInstance() = 0;
     
     //Similar to nextDocument, finds the first occurrence of a term just at 'target' or later
-    virtual Location SeekToLocation(Location target);
+    virtual Location SeekToLocation(Location target) = 0;
     
     //First number in the posting list of a term
     virtual Location getClosestStartLocation();
@@ -46,9 +46,9 @@ public:
     virtual Location getClosestEndLocation();
     
     //Returns whatever document you're looking at
-    virtual Isr* getDocIsr();
+    Isr* getDocIsr();
     
-    virtual Location CurInstance();
+    Location CurInstance();
 };
 
 class IsrWord : public Isr {
@@ -57,9 +57,9 @@ public:
     void SetLocations( Vector<Location>& matchesIn );
     ~IsrWord( );
     
-    Location nextInstance( );
-    Location SeekToLocation( Location seekDestination = 0 );
-    Location GetCurrentLocation( ) const;
+    virtual Location nextInstance( );
+    virtual Location SeekToLocation( Location seekDestination = 0 );
+    Location CurInstance( ) const;
     void AddWord(String wordIn);
     
     void SetImportance(unsigned importanceIn);
@@ -89,7 +89,7 @@ public:
     unsigned numOfTerms = 0;
     
     //Constructor for IsrOr, MUST be in a vector<Isr> format, otherwise it wont compile
-    IsrOr(Vector<Isr> phrasesToInsert);
+    IsrOr(Vector<Isr*> phrasesToInsert);
     
     //Points to the closest 'beginning of page'
     Location getClosestStartLocation(){
@@ -103,7 +103,7 @@ public:
     
     //Move all Isrs to the first occurrence of their respective word at 'target' or later
     //Returns ULLONG_MAX if there is no match
-    Location SeekToLocation(Location target);
+    virtual Location SeekToLocation(Location target);
     //TODO:
     // 1. Seek all the Isrs to the first occurrence beginning at
     //    the target location.
@@ -114,7 +114,7 @@ public:
     // 5. If any Isr reaches the end, there is no match.
     
     //Find the next instance of ANY of the words in 'terms'
-    Location nextInstance();
+    virtual Location nextInstance();
     
     //Seek all Isrs to the first occurrence JUST PAST the end of the current document
     Location nextDocument(){
@@ -135,9 +135,9 @@ public:
     unsigned numOfTerms = 0;
     
     //Constructor for IsrAnd
-    IsrAnd(Vector<Isr> phrasesToInsert);
+    IsrAnd(Vector<Isr*> phrasesToInsert);
     
-    Location SeekToLocation(Location target);
+    virtual Location SeekToLocation(Location target);
     //TODO:
     // 1. Seek all the Isrs to the first occurrence beginning at
     //    the target location.
@@ -148,7 +148,7 @@ public:
     // 5. If any Isr reaches the end, there is no match.
     
     //Finds next instance of all terms in a page
-    Location nextInstance(){
+    virtual Location nextInstance(){
         return SeekToLocation(nearestStartLocation + 1);
     }
     
@@ -179,11 +179,11 @@ public:
     IsrPhrase(String phraseToStore);
     
     //Finds next instance after target location
-    Location seek(Location target);
+    virtual Location SeekToLocation(Location target);
     
     //Finds next instance of phrase match
-    Location nextInstance(){
-        return seek(nearestStartLocation + 1);
+    virtual Location nextInstance(){
+        return SeekToLocation(nearestStartLocation + 1);
     }
     
 private:

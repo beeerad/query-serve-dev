@@ -129,7 +129,7 @@ bool IsrWord::hasNextInstance()
     return curInd < matches.size() - 1;
 }
 
-Location IsrWord::GetCurrentLocation() const
+Location IsrWord::CurInstance() const
 {
     return currentLocation;
 }
@@ -162,10 +162,10 @@ void IsrWord::SetImportance(unsigned importanceIn)
 //////////
 //OR ISR//
 //////////
-IsrOr::IsrOr(Vector<Isr> phrasesToInsert){
+IsrOr::IsrOr(Vector<Isr*> phrasesToInsert){
     for (int i = 0; i < phrasesToInsert.size(); ++i){
         
-        terms.push_back(&phrasesToInsert[i]);
+        terms.push_back(phrasesToInsert[i]);
     }
     numOfTerms += phrasesToInsert.size();
 }
@@ -244,9 +244,9 @@ Location IsrOr::nextInstance(){
 //AND ISR//
 ///////////
 
-IsrAnd::IsrAnd(Vector<Isr> phrasesToInsert){
+IsrAnd::IsrAnd(Vector<Isr*> phrasesToInsert){
     for (int i = 0; i < phrasesToInsert.size(); ++i){
-        terms.push_back(&phrasesToInsert[i]);
+        terms.push_back(phrasesToInsert[i]);
     }
     numOfTerms += phrasesToInsert.size();
 }
@@ -259,7 +259,7 @@ Location IsrAnd::SeekToLocation(Location target){
     //first location beginning where they should appear relative to the furthest term.
     // 3. If any term is past the desired location, return to step 2.
     // 4. If any ISR reaches the end, there is no match.
-    Vector<std::pair<Isr, Location>>docTracker;
+    Vector<std::pair<Isr*, Location>>docTracker;
     
     //Step 1: seek all ISRs to first occurrence after target location
     for (int i = 0; i < numOfTerms; ++i){
@@ -272,7 +272,7 @@ Location IsrAnd::SeekToLocation(Location target){
             Location nextLocation = terms[i]->nextInstance();
             IsrWord nextPage("");
             Location pageEnd = nextPage.SeekToLocation(nextLocation);
-            std::pair<Isr, Location> toInsert(*terms[i], pageEnd);
+            std::pair<Isr*, Location> toInsert(terms[i], pageEnd);
             docTracker.push_back(toInsert);
         }
         
@@ -292,19 +292,19 @@ Location IsrAnd::SeekToLocation(Location target){
         bool pageAltered = false;
         for (int i = 0; i < docTracker.size(); ++i){
             if (docTracker[i].second < latestPage){
-                while (docTracker[i].first.CurInstance() < latestPage){
+                while (docTracker[i].first->CurInstance() < latestPage){
                     //Step 4: Check if any pages reach the end
-                    if (docTracker[i].first.nextInstance() == 0){
+                    if (docTracker[i].first->nextInstance() == 0){
                         return 0;
                     }
                     //Update the IsrWord index and latest page
-                    docTracker[i].first.nextInstance();
+                    docTracker[i].first->nextInstance();
                     IsrWord nextPage("");
-                    Location valToCompare = nextPage.SeekToLocation(docTracker[i].first.CurInstance());
+                    Location valToCompare = nextPage.SeekToLocation(docTracker[i].first->CurInstance());
                     if (valToCompare != docTracker[i].second){
                         pageAltered = true;
                     }
-                    docTracker[i].second = nextPage.SeekToLocation(docTracker[i].first.CurInstance());
+                    docTracker[i].second = nextPage.SeekToLocation(docTracker[i].first->CurInstance());
                 }
             }
         }
@@ -317,12 +317,12 @@ Location IsrAnd::SeekToLocation(Location target){
     Location earliestPost = ULLONG_MAX;
     Location latestPost = 0;
     for (int i = 0; i < docTracker.size(); ++i){
-        if (docTracker[i].first.CurInstance() < earliestPost){
-            earliestPost = docTracker[i].first.CurInstance();
+        if (docTracker[i].first->CurInstance() < earliestPost){
+            earliestPost = docTracker[i].first->CurInstance();
             nearestTerm = i;
         }
-        if (docTracker[i].first.CurInstance() > latestPost){
-            latestPost = docTracker[i].first.CurInstance();
+        if (docTracker[i].first->CurInstance() > latestPost){
+            latestPost = docTracker[i].first->CurInstance();
             farthestTerm = i;
         }
     }
@@ -362,7 +362,7 @@ IsrPhrase::IsrPhrase(String phraseToStore){
 // 3. If any term is past the desired location, return to step 2.
 // 4. If any ISR reaches the end, there is no match.
 
-Location IsrPhrase::seek(Location target){
+Location IsrPhrase::SeekToLocation(Location target){
     Vector<Location>locationTracker;
     
     //Step 1: seek all ISRs to first occurrence after target location
