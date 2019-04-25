@@ -1,21 +1,12 @@
-//
-//  String.hpp
-//  ParserLab
-//
-//  Created by Jake C on 4/20/19.
-//  Copyright © 2019 Jake C. All rights reserved.
-//
-
+#pragma once
 #ifndef STRING_H_398
 #define STRING_H_398
-#include <string>
+
 class String
 {
 public:
     String( );
-    String( const char single_char );
     String( const char* toCopy );
-    String( const std::string copyString );
     String( char*&& toMove );
     String( const String& toCopy );
     String( String&& toMove );
