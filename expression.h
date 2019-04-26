@@ -29,7 +29,7 @@ public:
    
    //ISR pointer to the end of the current doc
    ISR* docEnd;
-   virtual void printTerms() = 0;
+   //virtual void printTerms() = 0;
    
    virtual void addTerm(ISR * phrase) = 0;
    virtual Location nextInstance() = 0;
@@ -40,7 +40,7 @@ public:
    //virtual Location nextDocument();
    
    //Similar to nextDocument, finds the first occurrence of a term just at 'target' or later
-   virtual Location seek(Location target) = 0;
+   virtual Location seekToLocation(Location target) = 0;
    
    //First number in the posting list of a term
    //virtual Location getClosestStartLocation();
@@ -67,8 +67,7 @@ public:
    }
    
    virtual Location nextInstance() override;
-   virtual Location seek(Location target) override;
-   }
+   virtual Location seekToLocation(Location target) override;
    
    //Custom constructor
    ISRWord(String wordToInsert){
@@ -86,46 +85,7 @@ public:
    //Note: ISRWord will use its parent class's functions for nextInstance,
    //nextDocument, seek, getPostsStart, getPostsEnd, getDocISR
 };
-
-class ISRPhrase : public ISR{
- public:
-   virtual void addTerm(ISR * phrase) override{
-      terms.push_back(phrase);
-   }
- 
- //Keeps track of how many terms we have
- unsigned numOfTerms = 0;
- 
- ISRPhrase(){}
- //Constructor for ISRPhrase
- ISRPhrase(String phraseToStore);
- 
-   virtual Location seek(Location target) override;
- //TODO
- // 1. Seek all ISRs to the first occurrence beginning at the target location.
- // 2. Pick the furthest term and attempt to seek all the other terms to the
- //first location beginning where they should appear relative to the furthest term.
- // 3. If any term is past the desired location, return to step 2.
- // 4. If any ISR reaches the end, there is no match.
- 
- //Finds next instance of phrase match
-   virtual Location nextInstance() override{
-      Location location = 0;
-      for(int i = 0; i < terms.size(); i++) {
-         cout << terms[i] << endl;
-         location += terms[i]->seek(0);
-         }
-         return location;
-         }
- 
- private:
- unsigned nearestTerm, farthestTerm;
- Location nearestStartLocation, nearestEndLocation;
- //List of ISRs that we keep track of
- Vector<ISR*> terms;
- };
- 
-
+         
 class ISRAnd : public ISR{
 public:
    virtual void addTerm(ISR * phrase) override{
@@ -140,9 +100,7 @@ public:
    //Constructor for ISRAnd
    //ISRAnd(Vector<ISR> phrasesToInsert);
    
-   virtual Location seek(Location target) override{
-      return 1;
-   }
+   virtual Location seekToLocation(Location target) override;
    //TODO:
    // 1. Seek all the ISRs to the first occurrence beginning at
    //    the target location.
@@ -153,14 +111,7 @@ public:
    // 5. If any ISR reaches the end, there is no match.
    
    //Finds next instance of all terms in a page
-   virtual Location nextInstance() override{
-      Location location = 0;
-      for(int i = 0; i < terms.size(); i++) {
-         cout << terms[i] << endl;
-         location += terms[i]->seek(0);
-      }
-      return location;
-   }
+   virtual Location nextInstance() override;
    
 private:
    unsigned nearestTerm, farthestTerm;
@@ -195,9 +146,7 @@ public:
    
    //Move all ISRs to the first occurrence of their respective word at 'target' or later
    //Returns ULLONG_MAX if there is no match
-   virtual Location seek(Location target) override{
-      return 0;
-   }
+   virtual Location seekToLocation(Location target) override;
    //TODO:
    // 1. Seek all the ISRs to the first occurrence beginning at
    //    the target location.
@@ -208,19 +157,8 @@ public:
    // 5. If any ISR reaches the end, there is no match.
    
    //Find the next instance of ANY of the words in 'terms'
-   virtual Location nextInstance() override{
-      Location location = 0;
-      for(int i = 0; i < terms.size(); i++) {
-         cout << terms[i] << endl;
-         location += terms[i]->seek(0);
-      }
-      return location;
-   }
+   virtual Location nextInstance() override;
    
-   //Seek all ISRs to the first occurrence JUST PAST the end of the current document
-   //Location nextDocument(){
-   //  return seek(docEnd->getPostsEndLocation() + 1);
-   //}
 private:
    //
    //List of ISRs that we keep track of
@@ -228,8 +166,38 @@ private:
    unsigned nearestTerm;
    Location nearestStartLocation, nearestEndLocation;
 };
-         
-         
+
+
+class ISRPhrase : public ISR{
+public:
+   virtual void addTerm(ISR * phrase) override{
+      terms.push_back(phrase);
+   }
+   
+   //Keeps track of how many terms we have
+   unsigned numOfTerms = 0;
+   
+   ISRPhrase(){}
+   //Constructor for ISRPhrase
+   ISRPhrase(String phraseToStore);
+   
+   virtual Location seekToLocation(Location target) override;
+   //TODO
+   // 1. Seek all ISRs to the first occurrence beginning at the target location.
+   // 2. Pick the furthest term and attempt to seek all the other terms to the
+   //first location beginning where they should appear relative to the furthest term.
+   // 3. If any term is past the desired location, return to step 2.
+   // 4. If any ISR reaches the end, there is no match.
+   
+   //Finds next instance of phrase match
+   virtual Location nextInstance() override;
+   
+private:
+   unsigned nearestTerm, farthestTerm;
+   Location nearestStartLocation, nearestEndLocation;
+   //List of ISRs that we keep track of
+   Vector<ISR*> terms;
+};
 
 
 #endif /* EXPRESSION_H_ */
