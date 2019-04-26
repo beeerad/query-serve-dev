@@ -95,7 +95,7 @@ void ISRWord::SetLocations (Vector<Location>& matchesIn)
    matches = matchesIn;
 }
 
-Location ISRWord::SeekToLocation(Location location)
+Location ISRWord::seekToLocation(Location location)
 {
    Location closestLocation = IsrGlobals::IsrSentinel;
    curInd = 0;
@@ -512,4 +512,3 @@ Location IsrPhrase::seek(Location target){
    //    //Returns the end of the document that all the terms appear on
    //    return nearestStartLocation;
 }
-
