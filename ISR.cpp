@@ -129,9 +129,15 @@ bool IsrWord::hasNextInstance()
     return curInd < matches.size() - 1;
 }
 
-Location IsrWord::CurInstance() const
+Location IsrWord::getClosestStartLocation() 
 {
     return currentLocation;
+}
+
+Location IsrWord::getClosestEndLocation(){
+    String blank = "";
+    IsrWord pageEnd(blank);
+    return pageEnd.SeekToLocation(currentLocation);
 }
 
 DocumentAttributes IsrEndDoc::GetDocInfo()
@@ -149,7 +155,7 @@ DocumentAttributes IsrEndDoc::GetDocInfo()
     return docInfo;
 }
 
-void IsrWord::AddWord(String wordIn)
+void IsrWord::AddWord(String &wordIn)
 {
     word = wordIn;
 }
@@ -179,7 +185,7 @@ Location IsrOr::SeekToLocation(Location target){
     //Step 1: seek all ISRs to first occurrence after target location
     for (int i = 0; i < numOfTerms; ++i){
         //Traverse each term's posting list until it goes past 'target' or reaches the end
-        while (terms[i]->CurInstance() < target){
+        while (terms[i]->getClosestStartLocation() < target){
             //We've looped thru all terms, and nextInstance of the last term DNE,
             //so no term exists after location target
             if (terms[i]->nextInstance() == 0 && i == numOfTerms - 1 && closestTerm == ULLONG_MAX){
@@ -196,7 +202,8 @@ Location IsrOr::SeekToLocation(Location target){
     //nearestStartLocation is the first term that appears in the OR ISR
     nearestStartLocation = closestTerm;
     //Update nearestEndLocation, the end of the page of nearestStartLocation
-    IsrWord endPage("");
+    String blank = "";
+    IsrWord endPage(blank);
     nearestEndLocation = endPage.SeekToLocation(closestTerm);
     return closestTerm;
     
@@ -213,17 +220,18 @@ Location IsrOr::nextInstance(){
         terms[nearestTerm]->nextInstance();
         Location closestTerm = ULLONG_MAX;
         for (int i = 0; i < numOfTerms; ++i){
-            if (terms[i]->CurInstance() < closestTerm && terms[i]->CurInstance() != 0){
-                closestTerm = terms[i]->CurInstance();
+            if (terms[i]->getClosestStartLocation() < closestTerm && terms[i]->getClosestStartLocation() != 0){
+                closestTerm = terms[i]->getClosestStartLocation();
                 nearestTerm = i;
             }
             //There are no next instances of any of the terms
-            if (terms[i]->CurInstance() == 0 && i == numOfTerms - 1 && closestTerm == ULLONG_MAX){
+            if (terms[i]->getClosestStartLocation() == 0 && i == numOfTerms - 1 && closestTerm == ULLONG_MAX){
                 return 0;
             }
         }
         nearestStartLocation = closestTerm;
-        IsrWord endPage("");
+        String blank = "";
+        IsrWord endPage(blank);
         nearestEndLocation = endPage.SeekToLocation(closestTerm);
         return closestTerm;
     }
@@ -264,13 +272,14 @@ Location IsrAnd::SeekToLocation(Location target){
     //Step 1: seek all ISRs to first occurrence after target location
     for (int i = 0; i < numOfTerms; ++i){
         //Traverse each term's posting list until it goes past 'target' or reaches the end
-        while (terms[i]->CurInstance() < target){
+        while (terms[i]->getClosestStartLocation() < target){
             //None of the posting list terms are on the same page
             if (terms[i]->nextInstance() == 0){
                 return 0;
             }
             Location nextLocation = terms[i]->nextInstance();
-            IsrWord nextPage("");
+            String blank = "";
+            IsrWord nextPage(blank);
             Location pageEnd = nextPage.SeekToLocation(nextLocation);
             std::pair<Isr*, Location> toInsert(terms[i], pageEnd);
             docTracker.push_back(toInsert);
@@ -292,19 +301,20 @@ Location IsrAnd::SeekToLocation(Location target){
         bool pageAltered = false;
         for (int i = 0; i < docTracker.size(); ++i){
             if (docTracker[i].second < latestPage){
-                while (docTracker[i].first->CurInstance() < latestPage){
+                while (docTracker[i].first->getClosestStartLocation() < latestPage){
                     //Step 4: Check if any pages reach the end
                     if (docTracker[i].first->nextInstance() == 0){
                         return 0;
                     }
                     //Update the IsrWord index and latest page
                     docTracker[i].first->nextInstance();
-                    IsrWord nextPage("");
-                    Location valToCompare = nextPage.SeekToLocation(docTracker[i].first->CurInstance());
+                    String blank = "";
+                    IsrWord nextPage(blank);
+                    Location valToCompare = nextPage.SeekToLocation(docTracker[i].first->getClosestStartLocation());
                     if (valToCompare != docTracker[i].second){
                         pageAltered = true;
                     }
-                    docTracker[i].second = nextPage.SeekToLocation(docTracker[i].first->CurInstance());
+                    docTracker[i].second = nextPage.SeekToLocation(docTracker[i].first->getClosestStartLocation());
                 }
             }
         }
@@ -317,12 +327,12 @@ Location IsrAnd::SeekToLocation(Location target){
     Location earliestPost = ULLONG_MAX;
     Location latestPost = 0;
     for (int i = 0; i < docTracker.size(); ++i){
-        if (docTracker[i].first->CurInstance() < earliestPost){
-            earliestPost = docTracker[i].first->CurInstance();
+        if (docTracker[i].first->getClosestStartLocation() < earliestPost){
+            earliestPost = docTracker[i].first->getClosestStartLocation();
             nearestTerm = i;
         }
-        if (docTracker[i].first->CurInstance() > latestPost){
-            latestPost = docTracker[i].first->CurInstance();
+        if (docTracker[i].first->getClosestStartLocation() > latestPost){
+            latestPost = docTracker[i].first->getClosestStartLocation();
             farthestTerm = i;
         }
     }
@@ -368,7 +378,7 @@ Location IsrPhrase::SeekToLocation(Location target){
     //Step 1: seek all ISRs to first occurrence after target location
     for (int i = 0; i < numOfTerms; ++i){
         //Traverse each term's posting list until it goes past 'target' or reaches the end
-        while (terms[i]->CurInstance() < target){
+        while (terms[i]->getClosestStartLocation() < target){
             //None of the posting list terms are on the same page
             if (terms[i]->nextInstance() == 0){
                 return 0;
@@ -424,7 +434,7 @@ Location IsrPhrase::SeekToLocation(Location target){
             if (i < farthestTermIndex){
                 Location wordOffset = farthestTermIndex - i;
                 Location expectedPosition = locationTracker[farthestTermIndex] - wordOffset;
-                while (terms[i]->CurInstance() < expectedPosition){
+                while (terms[i]->getClosestStartLocation() < expectedPosition){
                     //Term does not exist in remaining posting lists
                     if (terms[i]->nextInstance() == 0){
                         return 0;
@@ -435,7 +445,7 @@ Location IsrPhrase::SeekToLocation(Location target){
             else if (i > farthestTermIndex){
                 Location wordOffset = farthestTermIndex + i;
                 Location expectedPosition = locationTracker[farthestTermIndex] + wordOffset;
-                while (terms[i]->CurInstance() < expectedPosition){
+                while (terms[i]->getClosestStartLocation() < expectedPosition){
                     //Term does not exist in remaining posting lists
                     if (terms[i]->nextInstance() == 0){
                         return 0;
@@ -452,7 +462,8 @@ Location IsrPhrase::SeekToLocation(Location target){
     nearestTerm = 0;
     farthestTerm = numOfTerms - 1;
     nearestStartLocation = locationTracker[0];
-    IsrWord endPage("");
+    String blank = "";
+    IsrWord endPage(blank);
     nearestEndLocation = endPage.SeekToLocation(nearestStartLocation);
     return locationTracker[0];
     
@@ -513,4 +524,5 @@ Location IsrPhrase::SeekToLocation(Location target){
     //    //Returns the end of the document that all the terms appear on
     //    return nearestStartLocation;
 }
+
 

@@ -27,9 +27,7 @@ namespace IsrGlobals
 
 class Isr{
 public:
-    Isr (){
-        
-    }
+    Isr(){}
     //Isr pointer to the end of the current doc
     Isr* docEnd;
     
@@ -40,27 +38,30 @@ public:
     virtual Location SeekToLocation(Location target) = 0;
     
     //First number in the posting list of a term
-    virtual Location getClosestStartLocation();
+    virtual Location getClosestStartLocation() = 0;
     
     //Last number in the posting list of a term
-    virtual Location getClosestEndLocation();
+    virtual Location getClosestEndLocation() = 0;
     
     //Returns whatever document you're looking at
     Isr* getDocIsr();
     
-    Location CurInstance();
+    //virtual Location CurInstance() const;
+    virtual ~Isr(){}
 };
 
 class IsrWord : public Isr {
 public:
-    IsrWord( String word );
+    IsrWord( String &word_in ) : word(word_in){}
     void SetLocations( Vector<Location>& matchesIn );
-    ~IsrWord( );
+//    ~IsrWord( );
     
-    virtual Location nextInstance( );
-    virtual Location SeekToLocation( Location seekDestination = 0 );
-    Location CurInstance( ) const;
-    void AddWord(String wordIn);
+    Location nextInstance( )override;
+    Location SeekToLocation( Location seekDestination = 0 )override;
+    Location getClosestStartLocation() override;
+    Location getClosestEndLocation() override;
+    //Location CurInstance() const override;
+    void AddWord(String &wordIn);
     
     void SetImportance(unsigned importanceIn);
 
@@ -91,19 +92,22 @@ public:
     //Constructor for IsrOr, MUST be in a vector<Isr> format, otherwise it wont compile
     IsrOr(Vector<Isr*> phrasesToInsert);
     
+    //Destructor
+//    ~IsrOr( ){}
+    
     //Points to the closest 'beginning of page'
-    Location getClosestStartLocation(){
+    Location getClosestStartLocation() override {
         return nearestStartLocation;
     }
     
     //Points to the closest 'end of page'
-    Location getClosestEndLocation(){
+    Location getClosestEndLocation() override {
         return nearestEndLocation;
     }
     
     //Move all Isrs to the first occurrence of their respective word at 'target' or later
     //Returns ULLONG_MAX if there is no match
-    virtual Location SeekToLocation(Location target);
+    Location SeekToLocation(Location target) override;
     //TODO:
     // 1. Seek all the Isrs to the first occurrence beginning at
     //    the target location.
@@ -114,7 +118,7 @@ public:
     // 5. If any Isr reaches the end, there is no match.
     
     //Find the next instance of ANY of the words in 'terms'
-    virtual Location nextInstance();
+    Location nextInstance() override;
     
     //Seek all Isrs to the first occurrence JUST PAST the end of the current document
     Location nextDocument(){
@@ -137,7 +141,10 @@ public:
     //Constructor for IsrAnd
     IsrAnd(Vector<Isr*> phrasesToInsert);
     
-    virtual Location SeekToLocation(Location target);
+    //Destructor
+    ~IsrAnd(){};
+    
+    Location SeekToLocation(Location target) override;
     //TODO:
     // 1. Seek all the Isrs to the first occurrence beginning at
     //    the target location.
@@ -148,17 +155,17 @@ public:
     // 5. If any Isr reaches the end, there is no match.
     
     //Finds next instance of all terms in a page
-    virtual Location nextInstance(){
+    Location nextInstance() override{
         return SeekToLocation(nearestStartLocation + 1);
     }
     
     //Points to the closest 'beginning of page'
-    Location getClosestStartLocation(){
+    Location getClosestStartLocation() override {
         return nearestStartLocation;
     }
     
     //Points to the closest 'end of page'
-    Location getClosestEndLocation(){
+    Location getClosestEndLocation() override {
         return nearestEndLocation;
     }
     
@@ -178,12 +185,25 @@ public:
     //Constructor for IsrPhrase
     IsrPhrase(String phraseToStore);
     
+    //Destrucor
+//    ~IsrPhrase(){};
+    
     //Finds next instance after target location
-    virtual Location SeekToLocation(Location target);
+    Location SeekToLocation(Location target) override;
     
     //Finds next instance of phrase match
-    virtual Location nextInstance(){
+    Location nextInstance() override{
         return SeekToLocation(nearestStartLocation + 1);
+    }
+    
+    //end me
+    Location getClosestStartLocation() override{
+        return terms[0]->getClosestStartLocation();
+    }
+    
+    //end me 2
+    Location getClosestEndLocation() override {
+        return terms[0]->getClosestEndLocation();
     }
     
 private:
